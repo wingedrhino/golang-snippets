@@ -18,7 +18,7 @@ const (
 // of the type you wish to set in ElasticSearch
 func GetElasticMapping(input interface{}, typeName string) (mapping string, err error) {
 	mappingTree := gabs.New()
-	rootTree, err := mappingTree.Object(typeName, "properties")
+	rootTree, err := mappingTree.Object("mapping", typeName, "properties")
 	if err != nil {
 		return
 	}
