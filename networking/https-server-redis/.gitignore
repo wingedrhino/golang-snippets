@@ -1,0 +1,5 @@
+vendor
+tmp
+redis-volume/dump.rdb
+redis-volume/appendonly.aof
+https-server-redis

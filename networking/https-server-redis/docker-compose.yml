@@ -1,0 +1,17 @@
+version: "2.2" # Version 3 is for Compose; 2 is for Docker
+services:
+  server:
+    build: .
+    init: true
+    ports:
+      - "8443:8443"
+    links:
+      - redis
+    volumes:
+      - ${CERT_DIR}:/crt # Set this variable to the directory holding certs
+    command: -redis-url redis:6379 # Default config expects Redis on localhost
+  redis: # We use official Alpine Redis with an extra healthcheck script
+    image: healthcheck/redis:alpine
+    volumes:
+      - $PWD/redis-volume:/data # holds appendonly.aof
+    command: redis-server --appendonly yes # ["redis-server", "--appendonly", "yes"]
