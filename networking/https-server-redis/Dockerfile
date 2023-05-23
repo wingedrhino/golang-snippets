@@ -1,6 +1,6 @@
-FROM golang:1.9
-RUN mkdir -p /go/src/bitbucket.org/mahtuag/learn-go/networking/https-server-redis
-WORKDIR /go/src/bitbucket.org/mahtuag/learn-go/networking/https-server-redis
+FROM golang:1.10.3
+RUN mkdir -p /go/src/github.com/wingedrhino/golang-snippets/networking/https-server-redis
+WORKDIR /go/src/github.com/wingedrhino/golang-snippets/networking/https-server-redis
 COPY . .
 RUN go install .
 EXPOSE 8443

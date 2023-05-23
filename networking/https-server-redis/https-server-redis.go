@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"bitbucket.org/mahtuag/learn-go/networking/https-server-redis/handlers"
-	"bitbucket.org/mahtuag/learn-go/networking/https-server-redis/internal/platform/stack"
-	"bitbucket.org/mahtuag/learn-go/networking/https-server-redis/internal/util"
+	"github.com/wingedrhino/golang-snippets/networking/https-server-redis/handlers"
+	"github.com/wingedrhino/golang-snippets/networking/https-server-redis/internal/platform/stack"
+	"github.com/wingedrhino/golang-snippets/networking/https-server-redis/internal/util"
 )
 
 var redisListCap = flag.Int64("redis-list-cap", 15, "Capacity of list in Redis. Default value: '15'")
