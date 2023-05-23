@@ -1,7 +1,6 @@
-package main
+package elasticmapper
 
 import (
-	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -14,43 +13,25 @@ const (
 	structTag = "elasticmapper"
 )
 
-// MyType is a sample type for testing purposes
-type MyType struct {
-	A string `json:"a" xml:"AElement" elasticmapper:"-"`
-	B int64
-	M MyType2
-	N MyType3 `elasticmapper:"world,hello"`
-	O bool    `elasticmapper:"hello,     world" json:"-"`
-	P MyType3
+// GetElasticMapping returns an ElasticSearch mapping from a struct
+// Arguments: input, which could be any struct and typeName, which is the name
+// of the type you wish to set in ElasticSearch
+func GetElasticMapping(input interface{}, typeName string) (mapping string, err error) {
+	mappingTree := gabs.New()
+	rootTree, err := mappingTree.Object(typeName, "properties")
+	if err != nil {
+		return
+	}
+	err = getElasticMappingImpl(input, rootTree, typeName, false)
+	mapping = mappingTree.StringIndent("", "  ")
+	return
 }
 
-// MyType2 is a sample type for testing purposes
-type MyType2 struct {
-	C string `elasticmapper:"text"`
-}
-
-// MyType3 is a sample type for testing purposes
-type MyType3 struct {
-	C string `elasticmapper:"hello"`
-	D int64  `elasticmapper:"idonothing"`
-}
-
-func main() {
-	myVar := MyType{A: "Hello World!", B: 123123123, M: MyType2{"Ouch"}, N: MyType3{"Yieks!", 13}}
-	log.Printf("Variable myVar: %v\n", myVar)
-	jsonTree := gabs.New()
-	GetElasticMapping(myVar, jsonTree, "myVar", false)
-	fmt.Println(jsonTree.StringIndent("", "  "))
-}
-
-// GetElasticMapping returns an ElasticSearch mapping that's properly populated
-// in the provided *gabs.Contiainer.
-// TODO: Follow `json` tags and handle pointers.
-func GetElasticMapping(input interface{}, jsonTree *gabs.Container, structName string, isText bool) {
+func getElasticMappingImpl(input interface{}, jsonTree *gabs.Container, structName string, isText bool) error {
 	// Handle special case of us defining time.Time
 	if t, ok := (input).(time.Time); ok {
-		GetElasticMapping(t.Unix(), jsonTree, structName, false)
-		return
+		getElasticMappingImpl(t.Unix(), jsonTree, structName, false)
+		return nil
 	}
 	inputType := reflect.TypeOf(input)
 
@@ -61,30 +42,40 @@ func GetElasticMapping(input interface{}, jsonTree *gabs.Container, structName s
 		if innerType.Kind() == reflect.Struct {
 			childTreeContainer, err := jsonTree.Object(structName)
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
+				return err
 			}
 			// Store arrays of structs as nested objects in ElasticSearch
 			childTreeContainer.Set("nested", "type")
 			childTree, err := childTreeContainer.Object("properties")
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
+				return err
 			}
-			GetElasticMapping(zeroVal, childTree, "QWWEW5afasfsddfsf", false)
+			err = getElasticMappingImpl(zeroVal, childTree, "QWWEW5afasfsddfsf", false)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 
 		} else {
 			// Pass along
 			childTreeContainer, err := jsonTree.Object(structName)
 			if err != nil {
-				log.Fatalf("Error creating container for inner struct. Exiting... %v\n", err)
-				return
+				log.Println(err)
+				return err
 			}
-			GetElasticMapping(zeroVal, childTreeContainer, structName, false)
+			err = getElasticMappingImpl(zeroVal, childTreeContainer, structName, false)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 	case reflect.Struct:
 		for i := 0; i < inputType.NumField(); i++ {
 			fieldType := inputType.Field(i)
 			tagString := fieldType.Tag.Get(structTag)
-			tagLookup := GetTagLookup(tagString)
+			tagLookup := getTagLookup(tagString)
 			if tagLookup["-"] {
 				log.Printf("Encountered field %s with '-'set. Ignoring field!.\n", fieldType.Name)
 				continue
@@ -93,26 +84,33 @@ func GetElasticMapping(input interface{}, jsonTree *gabs.Container, structName s
 			fieldKind := fieldValue.Type().Kind()
 			childTreeContainer, err := jsonTree.Object(fieldType.Name)
 			if err != nil {
-				log.Fatalf("Error creating container for inner struct. Exiting... %v\n", err)
-				return
+				log.Println(err)
+				return err
 			}
 			innerValue := fieldValue.Interface()
 			if fieldKind == reflect.Struct { // cannot support interfaces
 				_, err = childTreeContainer.Set("object", "type")
 				if err != nil {
-					log.Fatalf("Error setting type to object. Exiting... %v\n", err)
+					log.Println(err)
+					return err
 				}
 				childTree, err := childTreeContainer.Object("properties")
 				if err != nil {
-					log.Fatalf("Error creating properties holder for inner struct. Exiting...%v\n", err)
+					log.Println(err)
+					return err
 				}
 				// do note that fieldType.Name is useless if innerValue is a struct
-				GetElasticMapping(innerValue, childTree, "asfdADAdASD", false)
+				err = getElasticMappingImpl(innerValue, childTree, "asfdADAdASD", false)
+				if err != nil {
+					log.Println(err)
+					return err
+				}
 			} else {
-				if tagLookup["text"] {
-					GetElasticMapping(innerValue, childTreeContainer, fieldType.Name, true)
-				} else {
-					GetElasticMapping(innerValue, childTreeContainer, fieldType.Name, false)
+				isText = tagLookup["text"]
+				err = getElasticMappingImpl(innerValue, childTreeContainer, fieldType.Name, isText)
+				if err != nil {
+					log.Println(err)
+					return err
 				}
 			}
 		}
@@ -134,12 +132,13 @@ func GetElasticMapping(input interface{}, jsonTree *gabs.Container, structName s
 		// Will have to handle edge cases properly later
 		log.Printf("Unsupported type. reflect.Type value is : %d\n", inputType.Kind())
 	}
+	return nil
 }
 
-// GetTagLookup returns a lookup table for a custom struct tag's options.
+// getTagLookup returns a lookup table for a custom struct tag's options.
 // For example, if you set mytag="hello,world", the options "hello" and "world"
 // are active according to convention.
-func GetTagLookup(tagString string) map[string]bool {
+func getTagLookup(tagString string) map[string]bool {
 	lookup := make(map[string]bool)
 	tags := strings.Split(tagString, ",")
 	for _, tag := range tags {
