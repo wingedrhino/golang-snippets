@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mahtuag/golang-snippets/elasticmapper"
 )
@@ -13,7 +14,10 @@ type MyType struct {
 	M MyType2
 	N MyType3 `elasticmapper:"world,hello"`
 	O bool    `elasticmapper:"hello,     world" json:"-"`
-	P MyType3
+	P []MyType3
+	Q []uint64
+	R time.Time
+	S []time.Time
 }
 
 // MyType2 is a sample type for testing purposes

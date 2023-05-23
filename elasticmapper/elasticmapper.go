@@ -18,7 +18,7 @@ const (
 // of the type you wish to set in ElasticSearch
 func GetElasticMapping(input interface{}, typeName string) (mapping string, err error) {
 	mappingTree := gabs.New()
-	rootTree, err := mappingTree.Object("mapping", typeName, "properties")
+	rootTree, err := mappingTree.Object("mappings", typeName, "properties")
 	if err != nil {
 		return
 	}
@@ -30,47 +30,12 @@ func GetElasticMapping(input interface{}, typeName string) (mapping string, err 
 func getElasticMappingImpl(input interface{}, jsonTree *gabs.Container, structName string, isText bool) error {
 	// Handle special case of us defining time.Time
 	if t, ok := (input).(time.Time); ok {
-		getElasticMappingImpl(t.Unix(), jsonTree, structName, false)
-		return nil
+		return getElasticMappingImpl(t.Unix(), jsonTree, structName, false)
 	}
 	inputType := reflect.TypeOf(input)
 
 	switch inputType.Kind() {
 	case reflect.Array, reflect.Slice:
-		innerType := inputType.Elem()
-		zeroVal := reflect.Zero(innerType).Interface()
-		if innerType.Kind() == reflect.Struct {
-			childTreeContainer, err := jsonTree.Object(structName)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-			// Store arrays of structs as nested objects in ElasticSearch
-			childTreeContainer.Set("nested", "type")
-			childTree, err := childTreeContainer.Object("properties")
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-			err = getElasticMappingImpl(zeroVal, childTree, "QWWEW5afasfsddfsf", false)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-
-		} else {
-			// Pass along
-			childTreeContainer, err := jsonTree.Object(structName)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-			err = getElasticMappingImpl(zeroVal, childTreeContainer, structName, false)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-		}
 	case reflect.Struct:
 		for i := 0; i < inputType.NumField(); i++ {
 			fieldType := inputType.Field(i)
@@ -82,13 +47,21 @@ func getElasticMappingImpl(input interface{}, jsonTree *gabs.Container, structNa
 			}
 			fieldValue := reflect.Zero(fieldType.Type)
 			fieldKind := fieldValue.Type().Kind()
-			childTreeContainer, err := jsonTree.Object(fieldType.Name)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
 			innerValue := fieldValue.Interface()
+			// Handle special case of us defining time.Time
+			if _, ok := (innerValue).(time.Time); ok {
+				_, err := jsonTree.Set("date", fieldType.Name, "type")
+				if err != nil {
+					return err
+				}
+				continue
+			}
 			if fieldKind == reflect.Struct { // cannot support interfaces
+				childTreeContainer, err := jsonTree.Object(fieldType.Name)
+				if err != nil {
+					log.Println(err)
+					return err
+				}
 				_, err = childTreeContainer.Set("object", "type")
 				if err != nil {
 					log.Println(err)
@@ -105,8 +78,58 @@ func getElasticMappingImpl(input interface{}, jsonTree *gabs.Container, structNa
 					log.Println(err)
 					return err
 				}
+			} else if fieldKind == reflect.Array || fieldKind == reflect.Slice {
+				// TODO we don't yet process timestamps properly
+				innerType := fieldType.Type.Elem()
+				zeroVal := reflect.Zero(innerType).Interface()
+				if innerType.Kind() == reflect.Struct {
+					// Handle special case of us defining time.Time
+					if _, ok := (zeroVal).(time.Time); ok {
+						_, err := jsonTree.Set("date", fieldType.Name, "type")
+						if err != nil {
+							return err
+						}
+						goto endArray
+					}
+					childTreeContainer, err := jsonTree.Object(fieldType.Name)
+					if err != nil {
+						log.Println(err)
+						return err
+					}
+					// Store arrays of structs as nested objects in ElasticSearch
+					childTreeContainer.Set("nested", "type")
+					childTree, err := childTreeContainer.Object("properties")
+					if err != nil {
+						log.Println(err)
+						return err
+					}
+					err = getElasticMappingImpl(zeroVal, childTree, "QWWEW5afasfsddfsf", false)
+					if err != nil {
+						log.Println(err)
+						return err
+					}
+				} else {
+					// Pass along
+					isText = tagLookup["text"]
+					childTreeContainer, err := jsonTree.Object(fieldType.Name)
+					if err != nil {
+						log.Println(err)
+						return err
+					}
+					err = getElasticMappingImpl(zeroVal, childTreeContainer, fieldType.Name, isText)
+					if err != nil {
+						log.Println(err)
+						return err
+					}
+				}
+			endArray:
 			} else {
 				isText = tagLookup["text"]
+				childTreeContainer, err := jsonTree.Object(fieldType.Name)
+				if err != nil {
+					log.Println(err)
+					return err
+				}
 				err = getElasticMappingImpl(innerValue, childTreeContainer, fieldType.Name, isText)
 				if err != nil {
 					log.Println(err)
