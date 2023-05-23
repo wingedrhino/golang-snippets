@@ -1,16 +1,18 @@
 package main
 
 import (
-	"os"
 	"fmt"
 	"net"
-//	"io/ioutil"
+	"os"
+	//	"io/ioutil"
 )
 
 // Port we're alistening at
 const port = ":8013"
+
 // May be "udp", "udp4" or "udp6"
 const netType = "udp"
+
 // Size in bytes
 const bufferSize = 512
 
@@ -29,7 +31,7 @@ func main() {
 	checkFatal(err, "Error writing to connection")
 	buf := make([]byte, bufferSize)
 	_, err = conn.Read(buf)
-//	res, err := ioutil.ReadAll(conn)
+	//	res, err := ioutil.ReadAll(conn)
 	checkFatal(err, "Unable to read response from server")
 	fmt.Printf("Response: %s", string(buf))
 }

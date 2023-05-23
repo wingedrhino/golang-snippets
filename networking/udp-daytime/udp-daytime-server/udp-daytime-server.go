@@ -1,16 +1,18 @@
 package main
 
 import (
-	"os"
 	"fmt"
 	"net"
+	"os"
 	"time"
 )
 
 // Port we're alistening at
 const port = ":8013"
+
 // May be "udp", "udp4" or "udp6"
 const netType = "udp"
+
 // Size in bytes
 const bufferSize = 512
 
@@ -48,7 +50,7 @@ func serve(conn *net.UDPConn, inLen int, clAddr *net.UDPAddr, err error) {
 		fmt.Printf("Error encountered while reading from connection: %v\n", err)
 		return
 	}
-	
+
 	// conn, err := net.DialUDP(netType, nil, clAddr)
 	// if err != nil {
 	// 	fmt.Printf("Error opening connection to client %v\n", *clAddr)
