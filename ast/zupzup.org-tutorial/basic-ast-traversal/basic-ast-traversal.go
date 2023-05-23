@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	filename = "/home/gautham/ext/workspace/go/local/src/github.com/wingedrhino/golang-snippets/ast/zupzup.org-tutorial/basic-ast-traversal/sample-code/sample-code.go"
+	filename = "/home/gautham/ext/workspace/golang-snippets/ast/zupzup.org-tutorial/basic-ast-traversal/sample-code/sample-code.go"
 )
 
 func main() {
