@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/mahtuag/golang-snippets/networking/https-server-redis/internal/platform/stack"
+	"github.com/wingedrhino/golang-snippets/networking/https-server-redis/internal/platform/stack"
 )
 
 // Handler is a http.Handler exposing business logic

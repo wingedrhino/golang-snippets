@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mahtuag/golang-snippets/elasticmapper"
+	"github.com/wingedrhino/golang-snippets/elasticmapper"
 )
 
 // MyType is a sample type for testing purposes
